@@ -1,0 +1,259 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Make a sprite from a texture atlas</title>
+<body>
+<script src="pixi/pixi.min.js"></script>
+<script>
+
+
+//Define variables that might be used in more 
+//than one function
+let dungeon, explorer, treasure, door, id;
+
+//Aliases
+let Application = PIXI.Application,
+    Container = PIXI.Container,
+    loader = PIXI.loader,
+    resources = PIXI.loader.resources,
+    TextureCache = PIXI.utils.TextureCache,
+    Sprite = PIXI.Sprite,
+    Rectangle = PIXI.Rectangle;
+
+//Create a Pixi Application
+let app = new Application({ 
+    width: 512, 
+    height: 512,                       
+    antialias: true, 
+    transparent: false, 
+    resolution:1
+  }
+);
+
+//Add the canvas that Pixi automatically created for you to the HTML document
+document.body.appendChild(app.view);
+
+//load a JSON file and run the `setup` function when it's done
+loader
+  .add("images/treasureHunter.json")
+  .load(setup);
+
+//The `randomInt` helper function
+function randomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function keyboard(value) {
+  let key = {};
+  key.value = value;
+  key.isDown = false;
+  key.isUp = true;
+  key.press = undefined;
+  key.release = undefined;
+  //The `downHandler`
+  key.downHandler = event => {
+    if (event.key === key.value) {
+      if (key.isUp && key.press) key.press();
+      key.isDown = true;
+      key.isUp = false;
+      event.preventDefault();
+    }
+  };
+
+  //The `upHandler`
+  key.upHandler = event => {
+    if (event.key === key.value) {
+      if (key.isDown && key.release) key.release();
+      key.isDown = false;
+      key.isUp = true;
+      event.preventDefault();
+    }
+  };
+
+  //Attach event listeners
+  const downListener = key.downHandler.bind(key);
+  const upListener = key.upHandler.bind(key);
+  
+  window.addEventListener(
+    "keydown", downListener, false
+  );
+  window.addEventListener(
+    "keyup", upListener, false
+  );
+  
+  // Detach event listeners
+  key.unsubscribe = () => {
+    window.removeEventListener("keydown", downListener);
+    window.removeEventListener("keyup", upListener);
+  };
+  
+  return key;
+}
+
+function setup_keys(){
+  let left_key = keyboard("ArrowLeft");
+
+  left_key.press = () => {
+    //key object pressed
+    explorer.vx = - 1;
+    //console.log("LeftArrow pressed");
+  };
+  left_key.release = () => {
+    explorer.vx = 0;
+  };
+
+  let right_key = keyboard("ArrowRight");
+
+  right_key.press = () => {
+    //key object pressed
+    explorer.vx = 1;
+    //console.log("LeftArrow pressed");
+  };
+  right_key.release = () => {
+    explorer.vx = 0;
+  };
+
+
+  let up_key = keyboard("ArrowUp");
+
+  up_key.press = () => {
+    //key object pressed
+    explorer.vy = -1;
+    //console.log("LeftArrow pressed");
+  };
+  up_key.release = () => {
+    explorer.vy = 0;
+  };
+
+
+  let down_key = keyboard("ArrowDown");
+
+  down_key.press = () => {
+    //key object pressed
+    explorer.vy = 1;
+    //console.log("LeftArrow pressed");
+  };
+  down_key.release = () => {
+    explorer.vy = 0;
+  };
+}
+
+function setup() {
+
+  //There are 3 ways to make sprites from textures atlas frames
+
+  //1. Access the `TextureCache` directly
+  let dungeonTexture = TextureCache["dungeon.png"];
+  dungeon = new Sprite(dungeonTexture);
+  app.stage.addChild(dungeon);
+
+  //2. Access the texture using throuhg the loader's `resources`:
+  explorer = new Sprite(
+    resources["images/treasureHunter.json"].textures["explorer.png"]
+  );
+  explorer.x = 68;
+
+  //Center the explorer vertically
+  explorer.y = app.stage.height / 2 - explorer.height / 2;
+
+  app.stage.addChild(explorer);
+
+
+    // Rotate around the center
+    explorer.anchor.x = 0.5;
+    explorer.anchor.y = 0.5;
+    explorer.vx = 0;
+    explorer.vy = 0;
+
+
+  //3. Create an optional alias called `id` for all the texture atlas 
+  //frame id textures.
+  id = PIXI.loader.resources["images/treasureHunter.json"].textures; 
+  
+  //Make the treasure box using the alias
+  treasure = new Sprite(id["treasure.png"]);
+  app.stage.addChild(treasure);
+
+  //Position the treasure next to the right edge of the canvas
+  treasure.x = app.stage.width - treasure.width - 48;
+  treasure.y = app.stage.height / 2 - treasure.height / 2;
+  app.stage.addChild(treasure);
+
+  //Make the exit door
+  door = new Sprite(id["door.png"]); 
+  door.position.set(32, 0);
+  app.stage.addChild(door);
+
+  //Make the blobs
+  let numberOfBlobs = 6,
+      spacing = 48,
+      xOffset = 150;
+
+  var blobs=[];
+  //Make as many blobs as there are `numberOfBlobs`
+  for (let i = 0; i < numberOfBlobs; i++) {
+
+    //Make a blob
+    let blob = new Sprite(id["blob.png"]);
+    blobs.push(blob);
+    //Space each blob horizontally according to the `spacing` value.
+    //`xOffset` determines the point from the left of the screen
+    //at which the first blob should be added.
+    let x = spacing * i + xOffset;
+
+    //Give the blob a random y position
+    //(`randomInt` is a custom function - see below)
+    let y = randomInt(0, app.stage.height - blob.height);
+
+    //Set the blob's position
+    blob.x = x;
+    blob.y = y;
+    blob.vx = 0;
+    blob.vy = 0;
+
+    //Add the blob sprite to the stage
+    app.stage.addChild(blob);
+  }
+  setup_keys();
+  app.ticker.add(() => {
+        explorer.x += explorer.vx;
+        explorer.y += explorer.vy;
+        for(var i=0; i < blobs.length; i++){
+          var b = blobs[i];
+          b.vx += randomInt(-4,4)*0.05;
+          b.vy += randomInt(-4,4)*0.05;
+          b.x += b.vx;
+          b.y += b.vy;
+          if (b.y <=0 ){
+            b.y = app.renderer.view.height-1;
+          }
+          if (b.x <=0 ){
+            b.x= app.renderer.view.width;
+          }
+          if (b.y >=app.renderer.view.height ){
+            b.y = 0;
+          }
+          if (b.x >app.renderer.view.width ){
+            b.x =0; 
+          }
+          var max_v=3;
+          if (b.vx >max_v ){
+            b.vx =max_v; 
+          }
+          if (b.vx <-max_v ){
+            b.vx =-max_v; 
+          }
+
+          if (b.vy >max_v ){
+            b.vy =max_v; 
+          }
+          if (b.vy <-max_v ){
+            b.vy =-max_v; 
+          }
+        }
+    });
+}
+    // Listen for frame updates
+
+
+</script>
+</body>
