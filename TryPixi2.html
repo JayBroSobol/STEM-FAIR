@@ -3,12 +3,26 @@
 <title>Make a sprite from a texture atlas</title>
 <body>
 <script src="pixi/pixi.min.js"></script>
+<script src="utils.js"></script>
+<script src="controls.js"></script>
 <script>
 
 
 //Define variables that might be used in more 
 //than one function
-let dungeon, explorer, treasure, door, id;
+let dungeon, explorer, treasure, door, id, bricks;
+
+let gravity = 0.5;
+let in_air = true;
+let on_rope = false;
+
+let ropes = [];
+let blobs = [];
+let update_func;
+</script>
+
+<script src="update.js"></script>
+<script>
 
 //Aliases
 let Application = PIXI.Application,
@@ -37,104 +51,86 @@ loader
   .add("images/treasureHunter.json")
   .load(setup);
 
-//The `randomInt` helper function
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+
+/* http://www.dematte.at/colorPicker/ */
+function addBrick(x, y, w, h){
+    let rectangle = new PIXI.Graphics();
+    rectangle.lineStyle(2,  0x4A4643, 1);
+    rectangle.beginFill(0x847C76);
+    rectangle.drawRect(0, 0, w, h);
+    rectangle.endFill();
+    rectangle.x = x;
+    rectangle.y = y;
+    app.stage.addChild(rectangle);
+    rectangle.vsize = rectangle.height * 0.2;
+    bricks.push(rectangle);
 }
 
-function keyboard(value) {
-  let key = {};
-  key.value = value;
-  key.isDown = false;
-  key.isUp = true;
-  key.press = undefined;
-  key.release = undefined;
-  //The `downHandler`
-  key.downHandler = event => {
-    if (event.key === key.value) {
-      if (key.isUp && key.press) key.press();
-      key.isDown = true;
-      key.isUp = false;
-      event.preventDefault();
-    }
-  };
-
-  //The `upHandler`
-  key.upHandler = event => {
-    if (event.key === key.value) {
-      if (key.isDown && key.release) key.release();
-      key.isDown = false;
-      key.isUp = true;
-      event.preventDefault();
-    }
-  };
-
-  //Attach event listeners
-  const downListener = key.downHandler.bind(key);
-  const upListener = key.upHandler.bind(key);
-  
-  window.addEventListener(
-    "keydown", downListener, false
-  );
-  window.addEventListener(
-    "keyup", upListener, false
-  );
-  
-  // Detach event listeners
-  key.unsubscribe = () => {
-    window.removeEventListener("keydown", downListener);
-    window.removeEventListener("keyup", upListener);
-  };
-  
-  return key;
+function addRope(x, y, h){
+    let rectangle = new PIXI.Graphics();
+    rectangle.lineStyle(1, 0xE7E90E, 1);
+    rectangle.beginFill(0xE7E90E);
+    rectangle.drawRect(0, 0, 4, h);
+    rectangle.endFill();
+    rectangle.x = x;
+    rectangle.y = y;
+    app.stage.addChild(rectangle);
+    ropes.push(rectangle);
+    rectangle.vsize = rectangle.height/2;
 }
 
-function setup_keys(){
-  let left_key = keyboard("ArrowLeft");
+function setup_bricks(){
+  bricks = [];
+  addBrick(60, 300, 100, 10);
+  addBrick(170, 384,100 , 20);
+  addBrick(260, 200, 33, 20);
+  addBrick(290, 279, 169, 20);
+}
 
-  left_key.press = () => {
-    //key object pressed
-    explorer.vx = - 1;
-    //console.log("LeftArrow pressed");
-  };
-  left_key.release = () => {
-    explorer.vx = 0;
-  };
+function setup_ropes(){
+  ropes = [];
+  addRope(45, 10, 300);
+  addRope(256, 200, 100);
 
-  let right_key = keyboard("ArrowRight");
+}
+function on_game_win(){
+  let style = new PIXI.TextStyle({
+    fontFamily: "Arial",
+    fontSize: 36,
+    fill: "white",
+    stroke: 'blue',
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4,
+    dropShadowAngle: Math.PI / 6,
+    dropShadowDistance: 6,
+  });
+  let message = new PIXI.Text("You Win!!!", style);
+  message.x = 170;
+  message.y = 200;
+  app.stage.addChild(message);
+  update_func = ()=>{};
+}
 
-  right_key.press = () => {
-    //key object pressed
-    explorer.vx = 1;
-    //console.log("LeftArrow pressed");
-  };
-  right_key.release = () => {
-    explorer.vx = 0;
-  };
-
-
-  let up_key = keyboard("ArrowUp");
-
-  up_key.press = () => {
-    //key object pressed
-    explorer.vy = -1;
-    //console.log("LeftArrow pressed");
-  };
-  up_key.release = () => {
-    explorer.vy = 0;
-  };
-
-
-  let down_key = keyboard("ArrowDown");
-
-  down_key.press = () => {
-    //key object pressed
-    explorer.vy = 1;
-    //console.log("LeftArrow pressed");
-  };
-  down_key.release = () => {
-    explorer.vy = 0;
-  };
+function on_game_over(){
+  let style = new PIXI.TextStyle({
+    fontFamily: "Arial",
+    fontSize: 36,
+    fill: "white",
+    stroke: '#ff3300',
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4,
+    dropShadowAngle: Math.PI / 6,
+    dropShadowDistance: 6,
+  });
+  let message = new PIXI.Text("Game over!", style);
+  message.x = 170;
+  message.y = 200;
+  app.stage.addChild(message);
+  update_func = ()=>{};
 }
 
 function setup() {
@@ -151,6 +147,7 @@ function setup() {
     resources["images/treasureHunter.json"].textures["explorer.png"]
   );
   explorer.x = 68;
+  explorer.vsize = explorer.height*0.3;
 
   //Center the explorer vertically
   explorer.y = app.stage.height / 2 - explorer.height / 2;
@@ -178,6 +175,8 @@ function setup() {
   treasure.y = app.stage.height / 2 - treasure.height / 2;
   app.stage.addChild(treasure);
 
+  setup_bricks();
+  setup_ropes();
   //Make the exit door
   door = new Sprite(id["door.png"]); 
   door.position.set(32, 0);
@@ -188,7 +187,6 @@ function setup() {
       spacing = 48,
       xOffset = 150;
 
-  var blobs=[];
   //Make as many blobs as there are `numberOfBlobs`
   for (let i = 0; i < numberOfBlobs; i++) {
 
@@ -214,43 +212,8 @@ function setup() {
     app.stage.addChild(blob);
   }
   setup_keys();
-  app.ticker.add(() => {
-        explorer.x += explorer.vx;
-        explorer.y += explorer.vy;
-        for(var i=0; i < blobs.length; i++){
-          var b = blobs[i];
-          b.vx += randomInt(-4,4)*0.05;
-          b.vy += randomInt(-4,4)*0.05;
-          b.x += b.vx;
-          b.y += b.vy;
-          if (b.y <=0 ){
-            b.y = app.renderer.view.height-1;
-          }
-          if (b.x <=0 ){
-            b.x= app.renderer.view.width;
-          }
-          if (b.y >=app.renderer.view.height ){
-            b.y = 0;
-          }
-          if (b.x >app.renderer.view.width ){
-            b.x =0; 
-          }
-          var max_v=3;
-          if (b.vx >max_v ){
-            b.vx =max_v; 
-          }
-          if (b.vx <-max_v ){
-            b.vx =-max_v; 
-          }
-
-          if (b.vy >max_v ){
-            b.vy =max_v; 
-          }
-          if (b.vy <-max_v ){
-            b.vy =-max_v; 
-          }
-        }
-    });
+  update_func = update;
+  app.ticker.add(()=>{update_func();});
 }
     // Listen for frame updates
 
