@@ -93,6 +93,7 @@ function setup_ropes(){
   addRope(256, 200, 100);
 
 }
+
 function on_game_win(){
   let style = new PIXI.TextStyle({
     fontFamily: "Arial",
@@ -106,9 +107,51 @@ function on_game_win(){
     dropShadowAngle: Math.PI / 6,
     dropShadowDistance: 6,
   });
+
   let message = new PIXI.Text("You Win!!!", style);
   message.x = 170;
   message.y = 200;
+  app.stage.addChild(message);
+  update_func = ()=>{};
+}
+
+function show_credits(){
+  let style = new PIXI.TextStyle({
+    fontFamily: "Arial",
+    fontSize: 20,
+    fill: "white",
+    stroke: 'blue',
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4,
+    dropShadowAngle: Math.PI / 6,
+    dropShadowDistance: 6,
+  });
+
+  let message = new PIXI.Text("Made by Alex Sobol, Allan Luo Yu", style);
+  message.x = 170;
+  message.y = 485;
+  app.stage.addChild(message);
+  update_func = ()=>{};
+}
+function version(){
+  let style = new PIXI.TextStyle({
+    fontFamily: "Arial",
+    fontSize: 20,
+    fill: "white",
+    stroke: 'black',
+    strokeThickness: 4,
+    dropShadow: true,
+    dropShadowColor: "#000000",
+    dropShadowBlur: 4,
+    dropShadowAngle: Math.PI / 6,
+    dropShadowDistance: 6,
+  });
+
+  let message = new PIXI.Text("version.0.1", style);
+  message.x = 10;
+  message.y = 485;
   app.stage.addChild(message);
   update_func = ()=>{};
 }
@@ -141,6 +184,9 @@ function setup() {
   let dungeonTexture = TextureCache["dungeon.png"];
   dungeon = new Sprite(dungeonTexture);
   app.stage.addChild(dungeon);
+
+  show_credits();
+  version();
 
   //2. Access the texture using throuhg the loader's `resources`:
   explorer = new Sprite(
